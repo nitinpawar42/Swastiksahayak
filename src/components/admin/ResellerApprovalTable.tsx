@@ -62,6 +62,7 @@ export function ResellerApprovalTable() {
           <TableHead>Email</TableHead>
           <TableHead>PAN</TableHead>
           <TableHead>Aadhaar</TableHead>
+          <TableHead>Pincode</TableHead>
           <TableHead>Address Proof</TableHead>
           <TableHead>Actions</TableHead>
         </TableRow>
@@ -73,6 +74,7 @@ export function ResellerApprovalTable() {
             <TableCell>{user.email}</TableCell>
             <TableCell>{user.pan}</TableCell>
             <TableCell>{user.aadhaar}</TableCell>
+            <TableCell>{user.pincode}</TableCell>
             <TableCell>
               <Link href={user.addressProofUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
                 View Document

@@ -19,6 +19,7 @@ export interface User {
   name: string;
   pan: string;
   aadhaar: string;
+  pincode: string;
   addressProofUrl: string;
   status: 'pending' | 'approved' | 'rejected';
   role: 'reseller' | 'admin';

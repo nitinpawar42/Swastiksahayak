@@ -1,5 +1,6 @@
 'use client';
 
+import { useFormState, useFormStatus } from 'react-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -7,163 +8,133 @@ import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth, db, storage } from '@/lib/firebase';
-import { doc, setDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { registerReseller } from '@/lib/actions/user';
+import { useEffect } from 'react';
+import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
+import { AlertCircle } from 'lucide-react';
 
 const formSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters.'),
-  email: z.string().email('Invalid email address.'),
-  password: z.string().min(8, 'Password must be at least 8 characters.'),
-  pan: z.string().regex(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, 'Invalid PAN format.'),
-  aadhaar: z.string().regex(/^[2-9]{1}[0-9]{3}[0-9]{4}[0-9]{4}$/, 'Invalid Aadhaar number.'),
-  addressProof: z.instanceof(File).refine(file => file?.size, 'Address proof is required.'),
+  name: z.string(),
+  email: z.string(),
+  password: z.string(),
+  pan: z.string(),
+  aadhaar: z.string(),
+  pincode: z.string(),
+  addressProof: z.any(),
 });
+
+
+function SubmitButton() {
+    const { pending } = useFormStatus();
+    return (
+        <Button type="submit" className="w-full !mt-8 text-lg font-bold" size="lg" disabled={pending}>
+          {pending ? 'Creating Account...' : 'Create Account'}
+        </Button>
+    )
+}
 
 export function RegisterForm() {
   const { toast } = useToast();
+  const [state, dispatch] = useFormState(registerReseller, undefined);
+
   const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
       email: '',
       password: '',
       pan: '',
       aadhaar: '',
+      pincode: '',
     },
   });
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    try {
-      // 1. Create user in Firebase Auth
-      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
-      const user = userCredential.user;
-
-      // 2. Upload address proof to Firebase Storage
-      const storageRef = ref(storage, `address_proofs/${user.uid}/${values.addressProof.name}`);
-      const snapshot = await uploadBytes(storageRef, values.addressProof);
-      const downloadURL = await getDownloadURL(snapshot.ref);
-
-      // 3. Create user document in Firestore with 'pending' status
-      await setDoc(doc(db, 'users', user.uid), {
-        name: values.name,
-        email: values.email,
-        pan: values.pan,
-        aadhaar: values.aadhaar,
-        addressProofUrl: downloadURL,
-        status: 'pending',
-        role: 'reseller',
-      });
-      
-      toast({
-        title: 'Registration Submitted!',
-        description: 'Your application is under review. You will be notified once it is approved.',
-      });
-
-      form.reset();
-    } catch (error: any) {
-        console.error("Registration Error: ", error);
+  useEffect(() => {
+    if (state?.message && !state.errors) {
         toast({
-            title: 'Registration Failed',
-            description: error.message || 'An unexpected error occurred.',
-            variant: 'destructive'
-        })
+            title: 'Registration Submitted!',
+            description: state.message,
+        });
+        form.reset();
     }
-  }
+  }, [state, toast, form]);
+
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
+    <form action={dispatch} className="space-y-6">
+        <div className="space-y-4">
             <FormItem>
               <FormLabel>Full Name</FormLabel>
               <FormControl>
-                <Input placeholder="John Doe" {...field} />
+                <Input placeholder="John Doe" name="name" required />
               </FormControl>
-              <FormMessage />
+              <FormMessage>{state?.errors?.name}</FormMessage>
             </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
+       
             <FormItem>
               <FormLabel>Email Address</FormLabel>
               <FormControl>
-                <Input type="email" placeholder="you@example.com" {...field} />
+                <Input type="email" placeholder="you@example.com" name="email" required/>
               </FormControl>
-              <FormMessage />
+               <FormMessage>{state?.errors?.email}</FormMessage>
             </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="password"
-          render={({ field }) => (
+      
             <FormItem>
               <FormLabel>Password</FormLabel>
               <FormControl>
-                <Input type="password" placeholder="••••••••" {...field} />
+                <Input type="password" placeholder="••••••••" name="password" required/>
               </FormControl>
-              <FormMessage />
+              <FormMessage>{state?.errors?.password}</FormMessage>
             </FormItem>
-          )}
-        />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <FormField
-            control={form.control}
-            name="pan"
-            render={({ field }) => (
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormItem>
-                <FormLabel>PAN Number</FormLabel>
-                <FormControl>
-                    <Input placeholder="ABCDE1234F" {...field} />
-                </FormControl>
-                <FormMessage />
+                    <FormLabel>PAN Number</FormLabel>
+                    <FormControl>
+                        <Input placeholder="ABCDE1234F" name="pan" required/>
+                    </FormControl>
+                    <FormMessage>{state?.errors?.pan}</FormMessage>
                 </FormItem>
-            )}
-            />
-            <FormField
-            control={form.control}
-            name="aadhaar"
-            render={({ field }) => (
-                <FormItem>
+
+                 <FormItem>
+                    <FormLabel>Pincode</FormLabel>
+                    <FormControl>
+                        <Input placeholder="e.g., 110001" name="pincode" required/>
+                    </FormControl>
+                    <FormMessage>{state?.errors?.pincode}</FormMessage>
+                </FormItem>
+            </div>
+            
+            <FormItem>
                 <FormLabel>Aadhaar Number</FormLabel>
                 <FormControl>
-                    <Input placeholder="1234 5678 9012" {...field} />
+                    <Input placeholder="1234 5678 9012" name="aadhaar" required/>
                 </FormControl>
-                <FormMessage />
-                </FormItem>
-            )}
-            />
-        </div>
-        <FormField
-          control={form.control}
-          name="addressProof"
-          render={({ field: { onChange, value, ...rest } }) => (
+                <FormMessage>{state?.errors?.aadhaar}</FormMessage>
+            </FormItem>
+
             <FormItem>
               <FormLabel>Address Proof (e.g., Utility Bill)</FormLabel>
               <FormControl>
                 <Input 
                     type="file" 
+                    name="addressProof"
                     accept="image/*,.pdf" 
-                    onChange={(e) => onChange(e.target.files?.[0])}
-                    {...rest}
+                    required
                 />
               </FormControl>
-              <FormMessage />
+              <FormMessage>{state?.errors?.addressProof}</FormMessage>
             </FormItem>
-          )}
-        />
-        <Button type="submit" className="w-full !mt-8 text-lg font-bold" size="lg">
-          Create Account
-        </Button>
-      </form>
-    </Form>
+        </div>
+
+        {state?.errors?._form && (
+             <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Error</AlertTitle>
+                <AlertDescription>{state.errors._form}</AlertDescription>
+            </Alert>
+        )}
+
+        <SubmitButton />
+    </form>
   );
 }
