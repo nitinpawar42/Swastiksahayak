@@ -58,9 +58,9 @@ export async function registerReseller(prevState: State, formData: FormData): Pr
     // 1. Check pincode serviceability
     const serviceability = await checkPincodeServiceability(pincode);
     
-    if (!serviceability || serviceability.delivery_codes.length === 0) {
+    if (!serviceability || !serviceability.delivery_codes || serviceability.delivery_codes.length === 0) {
       return {
-          errors: { pincode: ['Sorry, this pincode is not serviceable.'] },
+          errors: { pincode: ['Sorry, this pincode is not serviceable. Please try another one.'] },
           message: 'Pincode not serviceable.'
       }
     }

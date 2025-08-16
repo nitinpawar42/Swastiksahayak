@@ -1,3 +1,4 @@
+
 export interface Product {
   id: string;
   name: string;
@@ -14,13 +15,49 @@ export interface Product {
 }
 
 export interface User {
-  id: string;
+  id: string; // Firebase Auth UID
   email: string;
   name: string;
-  pan: string;
-  aadhaar: string;
-  pincode: string;
-  addressProofUrl: string;
-  status: 'pending' | 'approved' | 'rejected';
   role: 'reseller' | 'admin';
+  
+  // Reseller-specific fields
+  pan?: string;
+  aadhaar?: string;
+  pincode?: string;
+  addressProofUrl?: string;
+  status?: 'pending' | 'approved' | 'rejected';
+}
+
+export interface Order {
+    id: string; // Firestore document ID
+    orderDate: number; // Timestamp
+    resellerId: string; // User ID of the reseller
+    customerDetails: {
+        name: string;
+        phone: string;
+        address: string;
+        city: string;
+        pincode: string;
+        state: string;
+    };
+    items: {
+        productId: string;
+        name: string;
+        quantity: number;
+        sellingPrice: number;
+        commission: number;
+    }[];
+    totalAmount: number;
+    totalCommission: number;
+    status: 'placed' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'returned';
+    shippingDetails?: {
+        provider: 'Delhivery';
+        waybill: string;
+        trackingUrl: string;
+    };
+    paymentDetails: {
+        method: 'Prepaid' | 'COD' | 'REPL'; // As per Delhivery
+        status: 'pending' | 'completed' | 'failed';
+        transactionId?: string;
+    }
 }
