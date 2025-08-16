@@ -6,10 +6,10 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Share2 } from "lucide-react";
 import Image from 'next/image';
+import { CreateOrderButton } from "@/components/payments/CreateOrderButton";
 
 export default async function ProductDetailPage({ params }: { params: { id: string } }) {
   const product = await getProductById(params.id);
@@ -64,10 +64,7 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
           </div>
           
           <div className="mt-auto pt-6">
-            <Button size="lg" className="w-full text-lg font-bold">
-              <Share2 className="mr-2 h-5 w-5" />
-              Get Referral Link
-            </Button>
+            <CreateOrderButton product={product} />
             <p className="text-center text-sm text-muted-foreground mt-2">
                 You must be a registered reseller to generate a referral link.
             </p>
