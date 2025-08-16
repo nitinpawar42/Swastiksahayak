@@ -1,7 +1,7 @@
 
 'use server';
 
-import { collection, doc, writeBatch, setDoc, getDoc, query, limit, getDocs } from 'firebase/firestore';
+import { collection, doc, writeBatch, setDoc, getDoc, query, limit, getDocs, where } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { demoProducts } from '../data';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
@@ -94,7 +94,7 @@ export async function seedDatabase() {
   try {
     // 3. Create Demo Admin
     const adminEmail = 'nitinpawar41@gmail.com';
-    const adminPassword = 'Nirved@123';
+    const adminPassword = 'Nirved@12345';
     
     try {
         const userCredential = await createUserWithEmailAndPassword(auth, adminEmail, adminPassword);
