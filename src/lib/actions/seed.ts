@@ -1,25 +1,39 @@
 
 'use server';
 
-import { collection, doc, writeBatch, setDoc } from 'firebase/firestore';
+import { collection, doc, writeBatch, setDoc, getDoc, query, limit, getDocs } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { demoProducts } from '../data';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { Order, Product, User } from '../types';
 
 // This is a server action and should only be callable by an authorized admin.
 // In a real application, you would protect this endpoint.
 export async function seedDatabase() {
   let messages: string[] = [];
   let success = true;
+  let demoResellerId: string | null = null;
+  let demoProductId: string | null = null;
+  let demoProductName: string | null = null;
+  let demoProductSellingPrice: number | null = null;
+  let demoProductCommission: number | null = null;
+
 
   try {
     // 1. Seed Products
     const productsRef = collection(db, 'products');
     const batch = writeBatch(db);
 
-    demoProducts.forEach((productData) => {
+    demoProducts.forEach((productData, index) => {
       const docRef = doc(productsRef); // Automatically generate a new ID
-      batch.set(docRef, { ...productData, id: docRef.id });
+      const productWithId = { ...productData, id: docRef.id };
+      batch.set(docRef, productWithId);
+      if (index === 0) { // Grab the first product for the sample order
+        demoProductId = docRef.id;
+        demoProductName = productWithId.name;
+        demoProductSellingPrice = productWithId.sellingPrice;
+        demoProductCommission = productWithId.commission;
+      }
     });
 
     await batch.commit();
@@ -40,6 +54,7 @@ export async function seedDatabase() {
     try {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
+        demoResellerId = user.uid;
 
         await setDoc(doc(db, 'users', user.uid), {
             id: user.uid,
@@ -59,6 +74,12 @@ export async function seedDatabase() {
         if (error.code === 'auth/email-already-in-use') {
             messages.push('Demo reseller already exists. Skipped creation.');
             console.log('Demo reseller already exists.');
+            // If user exists, we need to find their ID to create the order
+            const userQuery = query(collection(db, 'users'), where('email', '==', email), limit(1));
+            const userSnapshot = await getDocs(userQuery);
+            if (!userSnapshot.empty) {
+                demoResellerId = userSnapshot.docs[0].id;
+            }
         } else {
             throw error; // Re-throw other auth errors
         }
@@ -102,6 +123,60 @@ export async function seedDatabase() {
      console.error('Error creating demo admin:', error);
      messages.push('Failed to create demo admin.');
      success = false;
+  }
+
+  try {
+    // 4. Create a Sample Order
+    if (demoResellerId && demoProductId && demoProductName && demoProductSellingPrice && demoProductCommission) {
+        const orderId = `SAMPLE_ORDER_${Date.now()}`;
+        const orderRef = doc(db, 'orders', orderId);
+        
+        const sampleOrder: Order = {
+            id: orderId,
+            orderDate: new Date().getTime(),
+            resellerId: demoResellerId,
+            customerDetails: {
+                name: 'Ravi Kumar',
+                phone: '9988776655',
+                address: '123, MG Road, Koramangala',
+                city: 'Bengaluru',
+                pincode: '560034', // Example serviceable pincode
+                state: 'Karnataka'
+            },
+            items: [{
+                productId: demoProductId,
+                name: demoProductName,
+                quantity: 1,
+                sellingPrice: demoProductSellingPrice,
+                commission: demoProductCommission,
+            }],
+            totalAmount: demoProductSellingPrice,
+            totalCommission: demoProductCommission,
+            status: 'shipped',
+            shippingDetails: {
+                provider: 'Delhivery',
+                waybill: '1234567890123',
+                trackingUrl: 'https://track.delhivery.com/p/1234567890123'
+            },
+            paymentDetails: {
+                method: 'Prepaid',
+                status: 'completed',
+                transactionId: 'PAY_SAMPLE_12345'
+            },
+            createdAt: new Date().getTime(),
+        };
+
+        await setDoc(orderRef, sampleOrder);
+        messages.push('Created a sample order.');
+        console.log('Created a sample order.');
+    } else {
+        messages.push('Could not create sample order due to missing reseller or product info.');
+        console.log('Could not create sample order due to missing reseller or product info.');
+    }
+  } catch (error) {
+    console.error('Error creating sample order:', error);
+    messages.push('Failed to create a sample order.');
+    success = false;
   }
 
 

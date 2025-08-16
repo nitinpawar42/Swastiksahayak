@@ -1,3 +1,4 @@
+
 'use server';
 
 import { z } from 'zod';
@@ -6,6 +7,7 @@ import { db } from '@/lib/firebase';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { createShipment } from '../delhivery';
 import type { Order, Product, User } from '../types';
+import { getProductById } from '../data';
 
 const razorpay = new Razorpay({
   key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
@@ -14,7 +16,7 @@ const razorpay = new Razorpay({
 
 const OrderSchema = z.object({
   productId: z.string(),
-  amount: z.number().positive(),
+  amount: z.coerce.number().positive(),
   resellerId: z.string(), // Assuming the reseller is logged in
 });
 
@@ -46,12 +48,24 @@ export async function createRazorpayOrder(
   try {
     const razorpayOrder = await razorpay.orders.create(options);
     
+    const product = await getProductById(productId);
+
+    if (!product) {
+      throw new Error(`Product with ID ${productId} not found.`);
+    }
+    
     // Create a preliminary order document in Firestore
     const orderRef = doc(db, 'orders', razorpayOrder.id);
     await setDoc(orderRef, {
       id: razorpayOrder.id,
       resellerId,
-      items: [{ productId, sellingPrice: amount, commission: 0, quantity: 1, name: '' }], // Temp data
+      items: [{ 
+        productId: product.id, 
+        sellingPrice: product.sellingPrice, 
+        commission: product.commission, 
+        quantity: 1, 
+        name: product.name 
+      }],
       status: 'pending_payment',
       totalAmount: amount,
       createdAt: new Date().getTime(),
