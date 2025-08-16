@@ -154,17 +154,22 @@ export async function verifyPaymentAndCreateOrder(prevState: any, formData: Form
             products_desc: product.name,
             total_amount: product.sellingPrice,
             quantity: "1",
-            pickup_location: { name: 'YourWarehouseName' }, // This should come from your config
         };
+        
+        // This should be an actual pickup location name from your Delhivery account
+        const pickupLocation = 'SwastikWarehouse'; 
 
         const delhiveryResponse = await createShipment({
             shipments: [shipmentData],
-            pickup_location: { name: 'YourWarehouseName' } // Replace with your actual warehouse name
+            pickup_location: { name: pickupLocation }
         });
 
 
-        if (!delhiveryResponse.packages || delhiveryResponse.packages.length === 0) {
-           throw new Error('Failed to create Delhivery shipment');
+        if (!delhiveryResponse.success || !delhiveryResponse.packages || delhiveryResponse.packages.length === 0) {
+           console.error("Delhivery shipment creation failed:", delhiveryResponse.error || "No packages returned");
+           // You could potentially update the order status to 'payment_complete_shipping_failed'
+           // For now, we'll throw an error to be caught below.
+           throw new Error(`Failed to create Delhivery shipment. Reason: ${delhiveryResponse.error || 'Unknown'}`);
         }
 
         // Update order with shipping details
