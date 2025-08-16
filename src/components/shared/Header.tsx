@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Menu, Wind } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -10,8 +10,9 @@ import { cn } from "@/lib/utils";
 const navLinks = [
   { href: "/", label: "Home" },
   { href: "/#products", label: "Products" },
+  { href: "/reseller/dashboard", label: "Reseller Dashboard"},
+  { href: "/admin/dashboard", label: "Admin"},
   { href: "/contact", label: "Contact Us" },
-  { href: "/admin/upload", label: "Upload Product" },
 ];
 
 export function Header() {
@@ -53,24 +54,30 @@ export function Header() {
                 </Button>
               </SheetTrigger>
               <SheetContent side="left">
-                <Link href="/" className="mr-6 flex items-center space-x-2 mb-6">
-                    <Wind className="h-6 w-6 text-primary" />
-                    <span className="font-bold font-headline">Swastik Sahayak</span>
-                </Link>
-                <nav className="flex flex-col gap-4">
-                  {navLinks.map((link) => (
-                    <Link
-                      key={link.href}
-                      href={link.href}
-                      className={cn(
-                        "text-lg font-medium transition-colors hover:text-primary",
-                        (pathname === link.href || (link.href !== "/" && pathname.startsWith(link.href))) ? "text-primary" : "text-muted-foreground"
-                      )}
-                    >
-                      {link.label}
+                <SheetHeader>
+                  <SheetTitle className="sr-only">Menu</SheetTitle>
+                  <SheetDescription className="sr-only">Main navigation menu</SheetDescription>
+                </SheetHeader>
+                <div className="flex flex-col h-full">
+                    <Link href="/" className="mr-6 flex items-center space-x-2 mb-6">
+                        <Wind className="h-6 w-6 text-primary" />
+                        <span className="font-bold font-headline">Swastik Sahayak</span>
                     </Link>
-                  ))}
-                </nav>
+                    <nav className="flex flex-col gap-4">
+                      {navLinks.map((link) => (
+                        <Link
+                          key={link.href}
+                          href={link.href}
+                          className={cn(
+                            "text-lg font-medium transition-colors hover:text-primary",
+                            (pathname === link.href || (link.href !== "/" && pathname.startsWith(link.href))) ? "text-primary" : "text-muted-foreground"
+                          )}
+                        >
+                          {link.label}
+                        </Link>
+                      ))}
+                    </nav>
+                </div>
               </SheetContent>
             </Sheet>
           </div>

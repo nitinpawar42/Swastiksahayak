@@ -1,6 +1,7 @@
+"use client";
 import { ProductUploadForm } from "@/components/admin/ProductUploadForm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, ShieldCheck } from "lucide-react";
 
 export default function UploadProductPage() {
     return (
@@ -14,7 +15,7 @@ export default function UploadProductPage() {
                 </CardHeader>
                 <CardContent>
                     <div className="flex items-center gap-2 bg-yellow-100 text-yellow-800 p-3 rounded-md border border-yellow-300 mb-6 text-sm">
-                        <AlertCircle className="w-5 h-5" />
+                        <ShieldCheck className="w-5 h-5" />
                         <p>This is an admin-only page. In a real application, it should be protected by authentication.</p>
                     </div>
                     <ProductUploadForm />
