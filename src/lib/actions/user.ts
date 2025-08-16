@@ -1,11 +1,12 @@
 'use server';
 
 import { z } from 'zod';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { auth, db, storage } from '@/lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { checkPincodeServiceability } from '../delhivery';
+import { revalidatePath } from 'next/cache';
 
 // Adjusted schema for server-side validation where `addressProof` will be a File object
 const RegisterSchema = z.object({
@@ -74,6 +75,7 @@ export async function registerReseller(prevState: State | undefined, formData: F
 
     // 4. Create user document in Firestore with 'pending' status
     await setDoc(doc(db, 'users', user.uid), {
+      id: user.uid,
       name: name,
       email: email,
       pan: pan,
@@ -98,5 +100,15 @@ export async function registerReseller(prevState: State | undefined, formData: F
         errors: { _form: ['An unexpected error occurred. Please try again.'] },
         message: 'An unexpected error occurred.'
     };
+  }
+}
+
+export async function logout() {
+  try {
+    await signOut(auth);
+    revalidatePath('/', 'layout');
+  } catch (error) {
+    console.error('Logout error:', error);
+    throw new Error('Failed to log out');
   }
 }
