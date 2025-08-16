@@ -54,26 +54,16 @@ export async function registerReseller(prevState: State | undefined, formData: F
   const { name, email, password, pan, aadhaar, pincode, addressProof } = validatedFields.data;
 
   try {
-    // 1. Check pincode serviceability
-    const serviceability = await checkPincodeServiceability(pincode);
-    
-    if (!serviceability?.delivery_codes || serviceability.delivery_codes.length === 0) {
-      return {
-          errors: { pincode: ['Sorry, this pincode is not serviceable. Please try another one.'] },
-          message: 'Pincode not serviceable.'
-      }
-    }
-    
-    // 2. Create user in Firebase Auth
+    // 1. Create user in Firebase Auth
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
 
-    // 3. Upload address proof to Firebase Storage
+    // 2. Upload address proof to Firebase Storage
     const storageRef = ref(storage, `address_proofs/${user.uid}/${addressProof.name}`);
     const snapshot = await uploadBytes(storageRef, addressProof);
     const downloadURL = await getDownloadURL(snapshot.ref);
 
-    // 4. Create user document in Firestore with 'pending' status
+    // 3. Create user document in Firestore with 'pending' status
     await setDoc(doc(db, 'users', user.uid), {
       id: user.uid,
       name: name,

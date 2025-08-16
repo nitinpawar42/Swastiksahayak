@@ -5,7 +5,7 @@ import { z } from 'zod';
 import Razorpay from 'razorpay';
 import { db } from '@/lib/firebase';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { createShipment } from '../delhivery';
+import { checkPincodeServiceability, createShipment } from '../delhivery';
 import type { Order, Product, User } from '../types';
 import { getProductById } from '../data';
 
@@ -108,7 +108,13 @@ export async function verifyPaymentAndCreateOrder(prevState: any, formData: Form
     const { razorpay_order_id, razorpay_payment_id, resellerId, productId, customerDetails } = validatedFields.data;
 
     try {
-        // First, update the order in Firestore with payment details and full data
+        // 0. Check pincode serviceability
+        const serviceability = await checkPincodeServiceability(customerDetails.pincode);
+        if (!serviceability || !serviceability.success || serviceability.delivery_codes?.length === 0) {
+            return { success: false, message: `The pincode ${customerDetails.pincode} is not serviceable. Please try a different address.` };
+        }
+
+        // 1. Update the order in Firestore with payment details and full data
         const orderRef = doc(db, 'orders', razorpay_order_id);
         const productSnap = await getDoc(doc(db, 'products', productId));
         const resellerSnap = await getDoc(doc(db, 'users', resellerId));
@@ -140,7 +146,7 @@ export async function verifyPaymentAndCreateOrder(prevState: any, formData: Form
 
         await setDoc(orderRef, orderData, { merge: true });
 
-        // Now, create the shipment with Delhivery
+        // 2. Create the shipment with Delhivery
         const shipmentData = {
             name: customerDetails.name,
             add: customerDetails.address,
@@ -172,7 +178,7 @@ export async function verifyPaymentAndCreateOrder(prevState: any, formData: Form
            throw new Error(`Failed to create Delhivery shipment. Reason: ${delhiveryResponse.error || 'Unknown'}`);
         }
 
-        // Update order with shipping details
+        // 3. Update order with shipping details
         await setDoc(orderRef, {
             status: 'processing',
             shippingDetails: {
