@@ -70,6 +70,40 @@ export async function seedDatabase() {
      success = false;
   }
 
+  try {
+    // 3. Create Demo Admin
+    const adminEmail = 'nitinpawar41@gmail.com';
+    const adminPassword = 'Nirved@123';
+    
+    try {
+        const userCredential = await createUserWithEmailAndPassword(auth, adminEmail, adminPassword);
+        const user = userCredential.user;
+
+        await setDoc(doc(db, 'users', user.uid), {
+            id: user.uid,
+            name: 'Admin (Default)',
+            email: adminEmail,
+            role: 'admin',
+            status: 'approved',
+        });
+        messages.push('Created demo admin user.');
+        console.log('Created demo admin user.');
+
+    } catch (error: any) {
+        if (error.code === 'auth/email-already-in-use') {
+            messages.push('Demo admin already exists. Skipped creation.');
+            console.log('Demo admin already exists.');
+        } else {
+            throw error; // Re-throw other auth errors
+        }
+    }
+
+  } catch (error) {
+     console.error('Error creating demo admin:', error);
+     messages.push('Failed to create demo admin.');
+     success = false;
+  }
+
 
   return { success, message: messages.join(' ') };
 }

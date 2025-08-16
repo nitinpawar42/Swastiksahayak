@@ -41,12 +41,10 @@ export const checkPincodeServiceability = (pincode: string) => {
  * @returns A promise that resolves with the created shipment data.
  */
 export const createShipment = (shipmentData: any) => {
-    // Removing cod_amount from the payload as requested
-    const { cod_amount, ...shipmentDataWithoutCod } = shipmentData;
     
     return fetchDelhiveryAPI('/api/cmu/create.json', {
         method: 'POST',
-        body: `format=json&data=${encodeURIComponent(JSON.stringify(shipmentDataWithoutCod))}`,
+        body: `format=json&data=${encodeURIComponent(JSON.stringify(shipmentData))}`,
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded'
         }
