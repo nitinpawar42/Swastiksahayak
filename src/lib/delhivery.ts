@@ -5,8 +5,6 @@ const API_TOKEN = process.env.DELHIVERY_API_TOKEN;
 async function fetchDelhiveryAPI(endpoint: string, options: RequestInit = {}) {
     if (!API_TOKEN) {
         console.error("Delhivery API Token is not configured.");
-        // In a real app, you might want to throw an error or handle this case more gracefully
-        // For now, we'll return a mock error to avoid crashing the server on startup.
         return { success: false, error: "API token not configured." };
     }
     const url = `${DELHIVERY_API_BASE}${endpoint}`;
@@ -19,19 +17,28 @@ async function fetchDelhiveryAPI(endpoint: string, options: RequestInit = {}) {
     try {
         const response = await fetch(url, { ...options, headers });
 
-        if (!response.ok) {
-            const errorBody = await response.text();
-            console.error(`Delhivery API Error: ${response.status} ${response.statusText}`, errorBody);
-            // Return a structured error instead of throwing
-            return { success: false, error: `Delhivery API request failed: ${response.statusText}` };
+        // Handle cases where Delhivery returns non-JSON error pages (like 404s)
+        const contentType = response.headers.get("content-type");
+        if (!response.ok || !contentType || !contentType.includes("application/json")) {
+             const errorBody = await response.text();
+             console.error(`Delhivery API Error: ${response.status} ${response.statusText}`, errorBody);
+             const errorMessage = `Delhivery API request failed: ${response.statusText}. Please check API token and configuration.`;
+             return { success: false, error: errorMessage, packages: [] };
         }
 
         const data = await response.json();
+        
+        // Ensure consistent success property based on API response structure
+        if (data.success === false) {
+             console.error(`Delhivery API returned a failure response:`, data);
+             return { success: false, error: data.error || 'Unknown Delhivery API error.', packages: [] };
+        }
+
         return { success: true, ...data };
 
     } catch (error) {
         console.error('Fetch to Delhivery API failed:', error);
-        return { success: false, error: 'Network error or failed to fetch from Delhivery API.' };
+        return { success: false, error: 'Network error or failed to fetch from Delhivery API.', packages: [] };
     }
 }
 
@@ -41,7 +48,6 @@ async function fetchDelhiveryAPI(endpoint: string, options: RequestInit = {}) {
  * @returns A promise that resolves with the serviceability data.
  */
 export const checkPincodeServiceability = (pincode: string) => {
-    // The endpoint here was incorrect. Correcting it to the right one.
     return fetchDelhiveryAPI(`/api/kinko/v1/invoice/charges/json/?md=S&ss=DTO&d_pin=${pincode}`);
 };
 
@@ -61,11 +67,10 @@ export const createShipment = async (shipmentData: any) => {
         }
     });
 
-    // Handle API call failure before proceeding
+    // The response object is now guaranteed to have a `success` property
+    // and a `packages` property (even if empty) on failure.
     if (!response.success) {
         console.error("Failed to create shipment due to API error:", response.error);
-        // Propagate a clear error structure
-        return { success: false, packages: [], error: response.error };
     }
 
     return response;
