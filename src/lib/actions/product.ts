@@ -1,3 +1,4 @@
+
 'use server';
 
 import { generateProductDescription } from '@/ai/flows/generate-product-description';
@@ -64,7 +65,9 @@ const ProductUploadSchema = z.object({
   name: z.string().min(3, "Product name must be at least 3 characters."),
   sellingPrice: z.coerce.number().min(0, "Price must be a positive number."),
   commission: z.coerce.number().min(0, "Commission must be a positive number."),
-  images: z.array(z.instanceof(File)).min(1, "At least one image is required.").refine(files => files.every(file => file.size > 0), "Image files cannot be empty."),
+  images: z.array(z.instanceof(File))
+    .min(1, "At least one image is required.")
+    .refine(files => files.every(file => file.size > 0), "Image files cannot be empty."),
   bulletPoints: z.array(z.string().min(1, "Bullet point cannot be empty.")).min(1, "At least one bullet point is required."),
   description: z.string().optional(),
   weight: z.string().min(1, "Weight is required."),
@@ -92,7 +95,7 @@ export async function uploadProductAction(prevState: ProductUploadState, formDat
         name: formData.get('name'),
         sellingPrice: formData.get('sellingPrice'),
         commission: formData.get('commission'),
-        images: formData.getAll('images'),
+        images: formData.getAll('images').filter(f => (f as File).size > 0),
         bulletPoints: formData.getAll('bulletPoints'),
         description: formData.get('description'),
         weight: formData.get('weight'),
