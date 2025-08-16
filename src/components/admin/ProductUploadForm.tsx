@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { AlertCircle, PlusCircle, Sparkles, Trash2 } from "lucide-react";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { generateDescriptionAction, uploadProductAction } from "@/lib/actions/product";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 
@@ -24,7 +24,10 @@ const formSchema = z.object({
   name: z.string().min(3, "Product name must be at least 3 characters."),
   sellingPrice: z.coerce.number().min(0, "Price must be a positive number."),
   commission: z.coerce.number().min(0, "Commission must be a positive number."),
-  images: z.any(),
+  images: z
+    .custom<FileList>()
+    .refine((files) => files?.length > 0, 'At least one image is required.')
+    .refine((files) => Array.from(files).every((file) => file.size > 0), 'Image files cannot be empty.'),
   bulletPoints: z
     .array(
       z.object({
@@ -65,6 +68,7 @@ export function ProductUploadForm() {
   });
   
   const formRef = useRef<HTMLFormElement>(null);
+  const fileInputRef = form.register('images');
 
   const handleGenerateDescription = async () => {
     const formData = new FormData();
@@ -95,9 +99,8 @@ export function ProductUploadForm() {
     formData.append('weight', values.weight);
     formData.append('dimensions', values.dimensions);
 
-    const imageInput = formRef.current?.querySelector('input[type="file"]') as HTMLInputElement;
-    if (imageInput.files) {
-        Array.from(imageInput.files).forEach(file => {
+    if (values.images) {
+        Array.from(values.images).forEach(file => {
             formData.append('images', file);
         })
     }
@@ -282,7 +285,7 @@ export function ProductUploadForm() {
             <FormItem>
               <FormLabel>Product Images</FormLabel>
               <FormControl>
-                <Input type="file" multiple accept="image/*" onChange={(e) => field.onChange(e.target.files)} />
+                <Input type="file" multiple accept="image/*" {...fileInputRef} />
               </FormControl>
               <FormMessage />
             </FormItem>
