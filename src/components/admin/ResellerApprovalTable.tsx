@@ -17,39 +17,16 @@ import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 
-export function ResellerApprovalTable() {
-  const [users, setUsers] = useState<User[]>([]);
-  const { toast } = useToast();
-
-  const fetchPendingUsers = async () => {
+async function getPendingUsers(): Promise<User[]> {
     const q = query(collection(db, "users"), where("status", "==", "pending"));
     const querySnapshot = await getDocs(q);
-    const pendingUsers = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
-    setUsers(pendingUsers);
-  };
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+}
 
-  useEffect(() => {
-    fetchPendingUsers();
-  }, []);
 
-  const handleApproval = async (userId: string, newStatus: 'approved' | 'rejected') => {
-    const userRef = doc(db, "users", userId);
-    try {
-      await updateDoc(userRef, { status: newStatus });
-      toast({
-        title: `User ${newStatus}`,
-        description: `The reseller has been ${newStatus}.`,
-      });
-      fetchPendingUsers(); // Refresh the list
-    } catch (error) {
-      toast({
-        title: "Update Failed",
-        description: "Could not update the reseller status.",
-        variant: "destructive",
-      });
-    }
-  };
-
+export async function ResellerApprovalTable() {
+  const users = await getPendingUsers();
+  
   if (users.length === 0) {
     return <p>No pending reseller applications.</p>;
   }
@@ -69,28 +46,60 @@ export function ResellerApprovalTable() {
       </TableHeader>
       <TableBody>
         {users.map((user) => (
-          <TableRow key={user.id}>
+          <ResellerApprovalTableRow key={user.id} user={user} />
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
+
+// Client component for the row to handle actions
+function ResellerApprovalTableRow({ user }: { user: User }) {
+    const { toast } = useToast();
+    const [isUpdating, setIsUpdating] = useState(false);
+
+    const handleApproval = async (userId: string, newStatus: 'approved' | 'rejected') => {
+        setIsUpdating(true);
+        const userRef = doc(db, "users", userId);
+        try {
+            await updateDoc(userRef, { status: newStatus });
+            toast({
+                title: `User ${newStatus}`,
+                description: `The reseller has been ${newStatus}. The list will update on next refresh.`,
+            });
+            // Note: We're not auto-refreshing here to keep it simple. 
+            // A full solution might involve revalidating the path.
+        } catch (error) {
+            toast({
+                title: "Update Failed",
+                description: "Could not update the reseller status.",
+                variant: "destructive",
+            });
+        } finally {
+            setIsUpdating(false);
+        }
+    };
+    
+    return (
+         <TableRow>
             <TableCell>{user.name}</TableCell>
             <TableCell>{user.email}</TableCell>
             <TableCell>{user.pan}</TableCell>
             <TableCell>{user.aadhaar}</TableCell>
             <TableCell>{user.pincode}</TableCell>
             <TableCell>
-              <Link href={user.addressProofUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+              <Link href={user.addressProofUrl!} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
                 View Document
               </Link>
             </TableCell>
             <TableCell className="space-x-2">
-              <Button size="sm" onClick={() => handleApproval(user.id, 'approved')}>
-                Approve
+              <Button size="sm" onClick={() => handleApproval(user.id, 'approved')} disabled={isUpdating}>
+                {isUpdating ? '...' : 'Approve'}
               </Button>
-              <Button size="sm" variant="destructive" onClick={() => handleApproval(user.id, 'rejected')}>
-                Reject
+              <Button size="sm" variant="destructive" onClick={() => handleApproval(user.id, 'rejected')} disabled={isUpdating}>
+                {isUpdating ? '...' : 'Reject'}
               </Button>
             </TableCell>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
-  );
+    )
 }

@@ -15,8 +15,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { PlusCircle, Trash2 } from "lucide-react";
-import { useEffect } from "react";
+import { AlertCircle, PlusCircle, Sparkles, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { generateDescriptionAction, uploadProductAction } from "@/lib/actions/product";
+import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 
 const formSchema = z.object({
   name: z.string().min(3, "Product name must be at least 3 characters."),
@@ -39,6 +41,9 @@ type ProductFormValues = z.infer<typeof formSchema>;
 
 export function ProductUploadForm() {
   const { toast } = useToast();
+  const [isPending, startTransition] = useTransition();
+  const [isGenerating, startGeneratingTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(formSchema),
@@ -46,6 +51,7 @@ export function ProductUploadForm() {
       name: "",
       sellingPrice: 0,
       commission: 0,
+      images: undefined,
       bulletPoints: [{ value: "" }],
       description: "",
       weight: "",
@@ -57,21 +63,69 @@ export function ProductUploadForm() {
     control: form.control,
     name: "bulletPoints",
   });
+  
+  const formRef = useRef<HTMLFormElement>(null);
 
-  function onSubmit(values: ProductFormValues) {
-    console.log(values);
-
-    toast({
-      title: "Product Uploaded!",
-      description: `${values.name} has been added to the product catalog.`,
+  const handleGenerateDescription = async () => {
+    const formData = new FormData();
+    formData.append('name', form.getValues('name'));
+    form.getValues('bulletPoints').forEach(bp => {
+        formData.append('bulletPoints[]', bp.value);
     });
 
-    form.reset();
+    startGeneratingTransition(async () => {
+        const result = await generateDescriptionAction({ description: form.getValues('description') }, formData);
+        if (result.description) {
+            form.setValue('description', result.description);
+            toast({ title: "Success", description: "AI-powered description has been generated." });
+        } else {
+            toast({ title: "Error", description: result.message || "Could not generate description.", variant: "destructive" });
+        }
+    });
   }
+
+  const onSubmit = (values: ProductFormValues) => {
+    setError(null);
+    const formData = new FormData();
+    formData.append('name', values.name);
+    formData.append('sellingPrice', String(values.sellingPrice));
+    formData.append('commission', String(values.commission));
+    values.bulletPoints.forEach(bp => formData.append('bulletPoints', bp.value));
+    formData.append('description', values.description || "");
+    formData.append('weight', values.weight);
+    formData.append('dimensions', values.dimensions);
+
+    const imageInput = formRef.current?.querySelector('input[type="file"]') as HTMLInputElement;
+    if (imageInput.files) {
+        Array.from(imageInput.files).forEach(file => {
+            formData.append('images', file);
+        })
+    }
+
+    startTransition(async () => {
+        const result = await uploadProductAction({}, formData);
+        if(result.errors) {
+            if(result.errors._form) {
+                setError(result.errors._form.join(', '));
+            }
+             Object.entries(result.errors).forEach(([key, value]) => {
+                if(key !== '_form' && value) {
+                    form.setError(key as keyof ProductFormValues, { message: value.join(', ')});
+                }
+            })
+        } else {
+            toast({
+              title: "Product Uploaded!",
+              description: result.message,
+            });
+            form.reset();
+        }
+    })
+  };
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+      <form ref={formRef} onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         {/* Name */}
         <FormField
           control={form.control}
@@ -142,6 +196,7 @@ export function ProductUploadForm() {
                           variant="ghost"
                           size="icon"
                           onClick={() => remove(index)}
+                          disabled={fields.length <= 1}
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
@@ -170,10 +225,16 @@ export function ProductUploadForm() {
           name="description"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Long-Form Product Description</FormLabel>
+              <div className="flex justify-between items-center">
+                <FormLabel>Long-Form Product Description</FormLabel>
+                 <Button type="button" variant="ghost" size="sm" onClick={handleGenerateDescription} disabled={isGenerating}>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    {isGenerating ? "Generating..." : "Generate with AI"}
+                </Button>
+              </div>
               <FormControl>
                 <Textarea
-                  placeholder="A detailed description of the product..."
+                  placeholder="A detailed description of the product... Or click 'Generate with AI' above!"
                   {...field}
                   rows={8}
                 />
@@ -214,22 +275,30 @@ export function ProductUploadForm() {
         </div>
 
         {/* Images */}
-        <FormField
+         <FormField
           control={form.control}
           name="images"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Product Images</FormLabel>
               <FormControl>
-                <Input type="file" multiple accept="image/*" />
+                <Input type="file" multiple accept="image/*" onChange={(e) => field.onChange(e.target.files)} />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
+        
+        {error && (
+             <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Error</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+            </Alert>
+        )}
 
-        <Button type="submit" size="lg" className="w-full font-bold">
-          Upload Product
+        <Button type="submit" size="lg" className="w-full font-bold" disabled={isPending}>
+          {isPending ? "Uploading..." : "Upload Product"}
         </Button>
       </form>
     </Form>
