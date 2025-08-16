@@ -7,6 +7,7 @@ import { doc, setDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { checkPincodeServiceability } from '../delhivery';
 
+// Adjusted schema for server-side validation where `addressProof` will be a File object
 const RegisterSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters.'),
   email: z.string().email('Invalid email address.'),
@@ -14,11 +15,9 @@ const RegisterSchema = z.object({
   pan: z.string().regex(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, 'Invalid PAN format.'),
   aadhaar: z.string().regex(/^[2-9]{1}[0-9]{3}[0-9]{4}[0-9]{4}$/, 'Invalid Aadhaar number.'),
   pincode: z.string().regex(/^[1-9][0-9]{5}$/, 'Invalid Pincode format.'),
-  addressProof: z.any()
-}).refine(data => data.addressProof.size > 0, {
-    message: 'Address proof is required.',
-    path: ['addressProof'],
+  addressProof: z.instanceof(File).refine(file => file.size > 0, 'Address proof is required.'),
 });
+
 
 type State = {
   message?: string | null;
@@ -34,18 +33,17 @@ type State = {
   } | null;
 }
 
-export async function registerReseller(prevState: State, formData: FormData): Promise<State> {
+export async function registerReseller(prevState: State | undefined, formData: FormData): Promise<State | undefined> {
+  
+  const rawFormData = Object.fromEntries(formData.entries());
+
   const validatedFields = RegisterSchema.safeParse({
-    name: formData.get('name'),
-    email: formData.get('email'),
-    password: formData.get('password'),
-    pan: formData.get('pan'),
-    aadhaar: formData.get('aadhaar'),
-    pincode: formData.get('pincode'),
-    addressProof: formData.get('addressProof'),
+    ...rawFormData,
+    addressProof: rawFormData.addressProof,
   });
 
   if (!validatedFields.success) {
+    console.log('Server validation failed:', validatedFields.error.flatten().fieldErrors);
     return {
       errors: validatedFields.error.flatten().fieldErrors,
       message: 'Please correct the errors in the form.',
