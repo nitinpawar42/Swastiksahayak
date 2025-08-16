@@ -29,7 +29,7 @@ export interface User {
 }
 
 export interface Order {
-    id: string; // Firestore document ID
+    id: string; // Firestore document ID, usually the Razorpay Order ID
     orderDate: number; // Timestamp
     resellerId: string; // User ID of the reseller
     customerDetails: {
@@ -49,15 +49,16 @@ export interface Order {
     }[];
     totalAmount: number;
     totalCommission: number;
-    status: 'placed' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'returned';
+    status: 'pending_payment' | 'placed' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'returned';
     shippingDetails?: {
         provider: 'Delhivery';
         waybill: string;
         trackingUrl: string;
     };
-    paymentDetails: {
+    paymentDetails?: {
         method: 'Prepaid' | 'COD' | 'REPL'; // As per Delhivery
         status: 'pending' | 'completed' | 'failed';
         transactionId?: string;
-    }
+    };
+    createdAt: number; // Timestamp
 }
