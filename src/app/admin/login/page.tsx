@@ -1,22 +1,22 @@
-import { LoginForm } from '@/components/auth/LoginForm';
+import { AdminLoginForm } from '@/components/auth/AdminLoginForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import Link from 'next/link';
+import { Shield } from 'lucide-react';
 
-export default function LoginPage() {
+export default function AdminLoginPage() {
   return (
     <div className="min-h-[calc(100vh-8rem)] flex items-center justify-center p-4 bg-secondary/30">
       <Card className="w-full max-w-md mx-auto shadow-2xl">
         <CardHeader className="text-center">
-          <CardTitle className="text-3xl font-headline">Reseller Login</CardTitle>
+            <div className="mx-auto bg-primary/10 text-primary p-3 rounded-full w-fit mb-4">
+                <Shield className="w-8 h-8" />
+            </div>
+          <CardTitle className="text-3xl font-headline">Admin Login</CardTitle>
           <CardDescription className="font-body">
-            Enter your credentials to access your dashboard. New here?{' '}
-            <Link href="/register" className="font-medium text-primary hover:underline">
-              Register
-            </Link>
+            Please enter your administrator credentials.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <LoginForm />
+          <AdminLoginForm />
         </CardContent>
       </Card>
     </div>

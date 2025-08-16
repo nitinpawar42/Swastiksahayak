@@ -2,7 +2,7 @@ import { collection, getDocs, doc, getDoc, setDoc, writeBatch } from 'firebase/f
 import { db } from './firebase';
 import type { Product } from './types';
 
-const demoProducts: Omit<Product, 'id'>[] = [
+export const demoProducts: Omit<Product, 'id'>[] = [
   {
     name: 'Hand-Painted Ceramic Mug Set',
     sellingPrice: 1299,
@@ -90,29 +90,9 @@ const demoProducts: Omit<Product, 'id'>[] = [
   }
 ];
 
-// Function to seed the database with some products
-export async function seedDatabase() {
-  const productsRef = collection(db, 'products');
-  const batch = writeBatch(db);
-
-  demoProducts.forEach((productData) => {
-    const docRef = doc(productsRef); // Automatically generate a new ID
-    batch.set(docRef, productData);
-  });
-
-  await batch.commit();
-  console.log('Database seeded with demo products.');
-}
-
-
 export async function getProducts(): Promise<Product[]> {
   const productsCollection = collection(db, 'products');
-  let snapshot = await getDocs(productsCollection);
-
-  if (snapshot.empty) {
-    await seedDatabase();
-    snapshot = await getDocs(productsCollection);
-  }
+  const snapshot = await getDocs(productsCollection);
 
   return snapshot.docs.map(doc => ({
     id: doc.id,

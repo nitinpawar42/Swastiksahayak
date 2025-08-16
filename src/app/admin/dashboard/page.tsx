@@ -36,9 +36,9 @@ const adminFeatures = [
     },
     {
         title: "Site Settings",
-        description: "Manage banners, tax settings, and site content.",
+        description: "Manage content, seed data, and site configurations.",
         icon: <Settings className="w-8 h-8 text-primary" />,
-        href: "#"
+        href: "/admin/settings"
     }
 ]
 
