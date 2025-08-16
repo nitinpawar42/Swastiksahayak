@@ -8,7 +8,7 @@ const adminFeatures = [
         title: "Approve Resellers",
         description: "Review and approve/reject new reseller applications.",
         icon: <Users className="w-8 h-8 text-primary" />,
-        href: "#"
+        href: "/admin/approve-resellers"
     },
     {
         title: "Manage Products",

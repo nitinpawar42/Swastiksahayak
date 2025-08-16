@@ -8,6 +8,11 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth, db } from '@/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import { useRouter } from 'next/navigation';
+import { User } from '@/lib/types';
 
 const formSchema = z.object({
   email: z.string().email('Invalid email address.'),
@@ -16,6 +21,7 @@ const formSchema = z.object({
 
 export function LoginForm() {
   const { toast } = useToast();
+  const router = useRouter();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -25,13 +31,56 @@ export function LoginForm() {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    // Here you would handle login with Firebase Auth
-    console.log(values);
-    toast({
-      title: 'Login Successful!',
-      description: 'Redirecting to your dashboard...',
-    });
-    // router.push('/dashboard');
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
+      const user = userCredential.user;
+
+      const userDocRef = doc(db, 'users', user.uid);
+      const userDoc = await getDoc(userDocRef);
+
+      if (!userDoc.exists()) {
+        throw new Error("User data not found.");
+      }
+
+      const userData = userDoc.data() as User;
+
+      if (userData.role === 'reseller') {
+        if (userData.status === 'approved') {
+          toast({
+            title: 'Login Successful!',
+            description: 'Redirecting to your dashboard...',
+          });
+          router.push('/reseller/dashboard');
+        } else if (userData.status === 'pending') {
+          await auth.signOut();
+          toast({
+            title: 'Login Failed',
+            description: 'Your application is still pending approval.',
+            variant: 'destructive',
+          });
+        } else {
+           await auth.signOut();
+           toast({
+            title: 'Login Failed',
+            description: 'Your application has been rejected. Please contact support.',
+            variant: 'destructive',
+          });
+        }
+      } else if (userData.role === 'admin') {
+         toast({
+            title: 'Admin Login Successful!',
+            description: 'Redirecting to the admin dashboard...',
+          });
+          router.push('/admin/dashboard');
+      }
+
+    } catch (error: any) {
+       toast({
+        title: 'Login Failed',
+        description: error.message || 'Invalid credentials.',
+        variant: 'destructive'
+      });
+    }
   }
 
   return (

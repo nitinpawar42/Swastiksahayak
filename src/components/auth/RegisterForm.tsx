@@ -7,6 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { auth, db, storage } from '@/lib/firebase';
+import { doc, setDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const formSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters.'),
@@ -14,7 +18,7 @@ const formSchema = z.object({
   password: z.string().min(8, 'Password must be at least 8 characters.'),
   pan: z.string().regex(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, 'Invalid PAN format.'),
   aadhaar: z.string().regex(/^[2-9]{1}[0-9]{3}[0-9]{4}[0-9]{4}$/, 'Invalid Aadhaar number.'),
-  addressProof: z.instanceof(File).optional().refine(file => file?.size, 'Address proof is required.'),
+  addressProof: z.instanceof(File).refine(file => file?.size, 'Address proof is required.'),
 });
 
 export function RegisterForm() {
@@ -31,22 +35,41 @@ export function RegisterForm() {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    // Here you would handle the form submission, including file upload to Firebase Storage
-    // For this example, we'll just log the data and show a success toast.
-    console.log({
+    try {
+      // 1. Create user in Firebase Auth
+      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+      const user = userCredential.user;
+
+      // 2. Upload address proof to Firebase Storage
+      const storageRef = ref(storage, `address_proofs/${user.uid}/${values.addressProof.name}`);
+      const snapshot = await uploadBytes(storageRef, values.addressProof);
+      const downloadURL = await getDownloadURL(snapshot.ref);
+
+      // 3. Create user document in Firestore with 'pending' status
+      await setDoc(doc(db, 'users', user.uid), {
         name: values.name,
         email: values.email,
         pan: values.pan,
         aadhaar: values.aadhaar,
-        addressProofName: values.addressProof?.name,
-    });
-    
-    toast({
-      title: 'Registration Successful!',
-      description: 'Your account has been created. Please check your email for verification.',
-    });
+        addressProofUrl: downloadURL,
+        status: 'pending',
+        role: 'reseller',
+      });
+      
+      toast({
+        title: 'Registration Submitted!',
+        description: 'Your application is under review. You will be notified once it is approved.',
+      });
 
-    form.reset();
+      form.reset();
+    } catch (error: any) {
+        console.error("Registration Error: ", error);
+        toast({
+            title: 'Registration Failed',
+            description: error.message || 'An unexpected error occurred.',
+            variant: 'destructive'
+        })
+    }
   }
 
   return (

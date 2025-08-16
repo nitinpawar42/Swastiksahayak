@@ -14,10 +14,12 @@ export interface Product {
 }
 
 export interface User {
-    id: string;
-    email: string;
-    name: string;
-    pan: string;
-    aadhaar: string;
-    addressProofUrl: string;
+  id: string;
+  email: string;
+  name: string;
+  pan: string;
+  aadhaar: string;
+  addressProofUrl: string;
+  status: 'pending' | 'approved' | 'rejected';
+  role: 'reseller' | 'admin';
 }
