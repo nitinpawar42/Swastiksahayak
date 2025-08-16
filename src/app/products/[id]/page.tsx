@@ -47,7 +47,7 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
           <h1 className="text-3xl md:text-4xl font-bold font-headline">{product.name}</h1>
           
           <div className="flex items-center gap-4 my-4">
-            <p className="text-3xl font-bold text-accent font-body">
+            <p className="text-3xl font-bold text-primary font-body">
               ₹{product.sellingPrice.toLocaleString()}
             </p>
             <Badge variant="outline" className="text-lg py-1 px-3">
