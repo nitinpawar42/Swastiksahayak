@@ -8,11 +8,13 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, query, where, getDocs, collection } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { User } from '@/lib/types';
+import { Separator } from '../ui/separator';
+import { Chrome } from 'lucide-react';
 
 const formSchema = z.object({
   email: z.string().email('Invalid email address.'),
@@ -30,12 +32,8 @@ export function LoginForm() {
     },
   });
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
-      const user = userCredential.user;
-
-      const userDocRef = doc(db, 'users', user.uid);
+  const handleAuthSuccess = async (uid: string) => {
+      const userDocRef = doc(db, 'users', uid);
       const userDoc = await getDoc(userDocRef);
 
       if (!userDoc.exists() || userDoc.data().role !== 'reseller') {
@@ -66,11 +64,30 @@ export function LoginForm() {
           variant: 'destructive',
         });
       }
+  }
 
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
+      await handleAuthSuccess(userCredential.user.uid);
     } catch (error: any) {
        toast({
         title: 'Login Failed',
         description: error.message || 'An unknown error occurred.',
+        variant: 'destructive'
+      });
+    }
+  }
+
+   async function handleGoogleSignIn() {
+    const provider = new GoogleAuthProvider();
+    try {
+      const result = await signInWithPopup(auth, provider);
+      await handleAuthSuccess(result.user.uid);
+    } catch (error: any) {
+       toast({
+        title: 'Login Failed',
+        description: error.message || 'Could not sign in with Google.',
         variant: 'destructive'
       });
     }
@@ -111,6 +128,17 @@ export function LoginForm() {
         
         <Button type="submit" className="w-full !mt-8 text-lg font-bold" size="lg">
           Login
+        </Button>
+        <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
+            </div>
+        </div>
+        <Button variant="outline" type="button" className="w-full" onClick={handleGoogleSignIn}>
+           <Chrome className="mr-2 h-4 w-4" /> Google
         </Button>
       </form>
     </Form>

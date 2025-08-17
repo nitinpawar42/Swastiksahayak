@@ -7,10 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
+import { Chrome } from 'lucide-react';
 
 const formSchema = z.object({
   email: z.string().email('Invalid email address.'),
@@ -28,12 +29,8 @@ export function AdminLoginForm() {
     },
   });
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
-      const user = userCredential.user;
-
-      const userDocRef = doc(db, 'users', user.uid);
+  const handleAdminAuthSuccess = async (uid: string) => {
+      const userDocRef = doc(db, 'users', uid);
       const userDoc = await getDoc(userDocRef);
 
       if (!userDoc.exists() || userDoc.data().role !== 'admin') {
@@ -46,13 +43,32 @@ export function AdminLoginForm() {
           description: 'Redirecting to the admin dashboard...',
       });
       router.push('/admin/dashboard');
+  }
 
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
+      await handleAdminAuthSuccess(userCredential.user.uid);
     } catch (error: any) {
        toast({
         title: 'Login Failed',
         description: error.message || 'Invalid credentials.',
         variant: 'destructive'
       });
+    }
+  }
+
+  async function handleGoogleSignIn() {
+    const provider = new GoogleAuthProvider();
+    try {
+        const result = await signInWithPopup(auth, provider);
+        await handleAdminAuthSuccess(result.user.uid);
+    } catch (error: any) {
+        toast({
+            title: 'Login Failed',
+            description: error.message || 'Could not sign in with Google.',
+            variant: 'destructive'
+        });
     }
   }
 
@@ -88,6 +104,18 @@ export function AdminLoginForm() {
         
         <Button type="submit" className="w-full !mt-8 text-lg font-bold" size="lg">
           Login
+        </Button>
+
+        <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
+            </div>
+        </div>
+        <Button variant="outline" type="button" className="w-full" onClick={handleGoogleSignIn}>
+           <Chrome className="mr-2 h-4 w-4" /> Google
         </Button>
       </form>
     </Form>
