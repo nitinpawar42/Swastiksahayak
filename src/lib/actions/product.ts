@@ -138,7 +138,8 @@ export async function uploadProductAction(prevState: ProductUploadState, formDat
             },
             faqs: [] // Default to empty FAQs
         };
-        
+        console.log("FORMDATA keys:", Array.from(newProduct.keys()));
+
         await setDoc(newProductRef, newProduct);
         
         revalidatePath('/');
