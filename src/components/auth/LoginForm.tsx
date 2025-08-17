@@ -54,14 +54,14 @@ export function LoginForm() {
       } else if (userData.status === 'pending') {
         await auth.signOut();
         toast({
-          title: 'Login Failed',
+          title: 'Application Pending',
           description: 'Your application is still pending approval.',
           variant: 'destructive',
         });
       } else {
          await auth.signOut();
          toast({
-          title: 'Login Failed',
+          title: 'Application Rejected',
           description: 'Your application has been rejected. Please contact support.',
           variant: 'destructive',
         });
@@ -70,7 +70,7 @@ export function LoginForm() {
     } catch (error: any) {
        toast({
         title: 'Login Failed',
-        description: error.message || 'Invalid credentials.',
+        description: error.message || 'An unknown error occurred.',
         variant: 'destructive'
       });
     }
